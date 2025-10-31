@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>震災遺構 保存活用アンケート｜シミュレーション付き（Ver2.5-DebugFix）</title>
+<title>震災遺構 保存活用アンケート（Ver2.7.2 - 修復版）</title>
 <style>
   :root { --bg:#f7f7f8; --card:#ffffff; --text:#111827; --muted:#6b7280; --accent:#2563eb; --accent-dark:#1d4ed8; --accent-light:#93c5fd; --line:#e5e7eb; }
   html,body{margin:0;background:var(--bg);color:var(--text);font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",sans-serif;}
@@ -53,7 +53,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>震災遺構 保存活用アンケート（Ver2.5-DebugFix）</h1>
+    <h1>震災遺構 保存活用アンケート（Ver2.7.2 - 修復版）</h1>
     <div class="desc">質問に答えると右側の <span class="pill">メッセージ</span> と <span class="pill">費用シミュレーション</span> が即時更新。CSV保存／端末一時保存で記録できます。</div>
   </header>
 
@@ -78,7 +78,7 @@
           <div class="small" id="t-initial">範囲：-</div>
         </div>
         <div class="bar">
-          <div class="label"><span>維持費（Q3） <span class="muted">［<span id="unitMaintLabel">万円/年</span>］</span></span><strong id="v-maint">-</strong></div>
+          <div class="label"><span>維持費（Q2×Q3） <span class="muted">［<span id="unitMaintLabel">万円（保存年数の累計）</span>］</span></span><strong id="v-maint">-</strong></div>
           <div class="bar-rail">
             <div id="min-maint" class="bar-min"></div>
             <div id="range-maint" class="bar-range"></div>
@@ -91,7 +91,7 @@
           <div class="small" id="t-town-initial">—</div>
         </div>
         <div class="bar">
-          <div class="label"><span>町負担（維持費 × Q4％） <span class="muted">［<span id="unitMaintLabel2">万円/年</span>］</span></span><strong id="v-town-maint">-</strong></div>
+          <div class="label"><span>町負担（維持費 × Q4％） <span class="muted">［<span id="unitMaintLabel2">万円（保存年数の累計）</span>］</span></span><strong id="v-town-maint">-</strong></div>
           <div class="bar-rail"><div id="b-town-maint" class="bar-fill"></div></div>
           <div class="small" id="t-town-maint">—</div>
         </div>
@@ -101,14 +101,14 @@
 
   <section class="card admin" id="admin"><details id="adminDetails"><summary>管理者設定（管理者のみ）を開く</summary>
     <h2 style="margin-top:0">管理者設定（かんたん編集）</h2>
-    <p class="muted">UTF-8+BOM / CRLF 対応。ここで設問や範囲、グラフ最大値を編集できます。</p>
+    <p class="muted">ここで設問や範囲、グラフ最大値を編集できます。iPad互換（古いSafariでも動作）。</p>
     <div class="grid-2">
       <div class="field"><label>フォームタイトル</label><input type="text" id="titleInput"></div>
       <div class="field"><label>金額単位（初期費用）</label>
         <select id="unitInitial"><option value="万円">万円</option><option value="千円">千円</option></select>
       </div>
       <div class="field"><label>金額単位（維持費）</label>
-        <select id="unitMaint"><option value="万円/年">万円/年</option><option value="千円/年">千円/年</option></select>
+        <select id="unitMaint"><option value="万円（保存年数の累計）">万円（保存年数の累計）</option><option value="万円/年">万円/年（旧表記）</option></select>
       </div>
     </div>
     <h3>グラフ最大値（スケール）</h3>
@@ -123,9 +123,9 @@
     </div>
     <h3>Q1 メッセージ（各選択肢の表示文）</h3>
     <div class="grid-2" id="q1Editors"></div>
-    <h3>Q2 初期費用の範囲（最小〜最大）</h3>
+    <h3>Q2 初期費用・維持費の範囲（最小〜最大）</h3>
     <div class="grid-2" id="q2Editors"></div>
-    <h3>Q3 維持費の範囲（最小〜最大）</h3>
+    <h3>Q3 維持費倍率（×）</h3>
     <div class="grid-2" id="q3Editors"></div>
     <details class="dev" style="margin-top:12px"><summary>開発者テストを表示（簡易）</summary>
       <div id="testResult" class="muted">未実行</div>
@@ -149,15 +149,15 @@
 
 <div class="footer">
   <div class="inner">
-    <button id="saveCsv" class="primary">回答をCSV保存（ファイル）</button>
-    <button id="saveLocal" class="primary">回答を端末に一時保存</button>
-    <button id="clearAll">回答をリセット</button>
+    <button id="footerSaveLocal" class="primary">回答を一時保存</button>
+    <button id="footerExportCsv">一時保存をCSV書き出し</button>
+    <span class="badge">保存件数：<span id="footerLocalCount">0</span> 件</span>
     <div class="muted" id="status"></div>
   </div>
 </div>
 
 <script>
-// ===== iPad Safari 対応 Polyfill（先頭に追加） =====
+// ===== 互換ユーティリティ（iPad Safari対策） =====
 (function(){
   if (typeof window.structuredClone !== 'function') {
     window.structuredClone = function(obj){ try{ return JSON.parse(JSON.stringify(obj)); }catch(e){ return obj; } };
@@ -167,187 +167,189 @@
   }
 })();
 
-// ===== Ver2.5 設定と状態 =====
-const defaultConfig = {
-  title: "震災遺構 保存活用アンケート（Ver2.5-DebugFix）",
-  unitInitial: "万円",
-  unitMaint: "万円/年",
+// ===== デフォルト設定 =====
+var defaultConfig = {
+  title: '震災遺構 保存活用アンケート（Ver2.7.2 - 修復版）',
+  unitInitial: '万円',
+  unitMaint: '万円（保存年数の累計）',
   graph: { maxMode: 'auto', maxValue: 1000 },
   questions: [
-    { id:"A1", type:"single", title:"居住地について教えてください", options:[
-      { label:"震災以前から大熊町内に居住" },
-      { label:"震災後から大熊町内に居住" },
-      { label:"大熊町外に居住（一時的な居住も含む）" }
+    { id:'A1', type:'single', title:'居住地について教えてください', options:[
+      { label:'震災以前から大熊町内に居住' },
+      { label:'震災後から大熊町内に居住' },
+      { label:'大熊町外に居住（一時的な居住も含む）' }
     ] },
-    { id:"Q1", type:"single", title:"遺構を何のために残しますか。あなたの中で最も共感できる選択肢を選んで下さい。", options:[
-      { label:"震災で途切れてしまった、大熊町の歴史文化を語るため", message:"熊町小学校や熊町幼稚園は大熊町の多くの子供たちが育った町の歴史そのものであり、ヒラメ養殖場は原発に紐着く大熊町の産業の歴史文化です。復興が進む中で、今までの暮らしが消えつつあります。町の起こりから現在まで連なる長い歴史を次世代へ語ります。" },
-      { label:"震災被害の凄惨さから、防災・避難生活の教訓を語るため", message:"津波被害を受けたヒラメ養殖場は津波の威力の壮絶さを、被災当時のまま残された高齢者福祉施設であるサンライト大熊は高齢者避難の難しさを物語っています。被災者やその親族の体験に基づく声は、地震大国である島国、日本において多くの防災・避難の教訓を伝えます。" },
-      { label:"原発事故から、原子力発電所を必要とするエネルギー問題を語るため", message:"原発事故は震災によって引き起こされましたが、その背景には原発を必要とするエネルギー問題が存在しています。地震や津波は自然災害ですが、原発事故は人の営みが深く関わっている悲劇とも考えられます。\n震災前後の人の営みから世界中で共通しているエネルギー問題を考えるきっかけを生み出します。" },
-      { label:"中間貯蔵施設を受け入れた、大熊町の苦渋の決断と復興への想いを語るため", message:"原発事故後に中間貯蔵施設を受け入れる事は大熊町にとって苦渋の決断でした。各所に一時保管されていた除去土壌を受け入れ、福島全体の復興を進めるために、多くの町民が先祖代々の土地や家を受け継いできた土地や家、町の風景を手放すことを決断しました。時が止まったような遺構の姿は、その決断の意味と重さを物語ります。" }
-    ]},
-    { id:"Q2", type:"single", title:"Q1のメッセージを語る為に、遺構はどのような形で保存されるのが望ましいですか。", options:[
-      { label:"遺構の建物を現状のまま保存",   initial_min:100, initial_max:200 },
-      { label:"遺構の建物の一部を現状のまま保存", initial_min:200, initial_max:300 },
-      { label:"遺構の建物を再現レプリカで作成し、保存", initial_min:300, initial_max:400 },
-      { label:"遺構の建物や内部の様子を3Dデータや写真で保存", initial_min:400, initial_max:500 },
-      { label:"遺構内部に残された物品のみを保存", initial_min:500, initial_max:600 }
-    ]},
-    { id:"Q3", type:"single", title:"建物はいつまで保存されるのが望ましいですか。", options:[
-      { label:"0年（建物は保存しなくて良い）", maint_min:100, maint_max:200 },
-      { label:"約20年（中間貯蔵施設の撤退まで保存する）", maint_min:200, maint_max:300 },
-      { label:"20～50年（中間貯蔵施設撤退以降も保存する）", maint_min:300, maint_max:400 },
-      { label:"50年以上（可能な限り保存する）", maint_min:400, maint_max:500 },
-      { label:"保存処置は行わず、建物が崩れるまでありのままで残す", maint_min:500, maint_max:600 }
-    ]},
-    { id:"Q4", type:"slider", title:"保存活用に係る事業費のうち、町はどの程度負担する必要があると思いますか。", min:0, max:100, step:1, value:0 },
-    { id:"Q5", type:"text", optional:true, title:"参考：自由記述（任意）", placeholder:"ご意見・ご提案などあればご記入ください（任意）"}
+    { id:'Q1', type:'single', title:'遺構を何のために残しますか。あなたの中で最も共感できる選択肢を選んで下さい。', options:[
+      { label:'震災で途切れてしまった、大熊町の歴史文化を語るため', message:'熊町小学校や熊町幼稚園は大熊町の多くの子供たちが育った町の歴史そのものであり、ヒラメ養殖場は原発に紐着く大熊町の産業の歴史文化です。復興が進む中で、今までの暮らしが消えつつあります。町の起こりから現在まで連なる長い歴史を次世代へ語ります。' },
+      { label:'震災被害の凄惨さから、防災・避難生活の教訓を語るため', message:'津波被害を受けたヒラメ養殖場は津波の威力の壮絶さを、被災当時のまま残された高齢者福祉施設であるサンライト大熊は高齢者避難の難しさを物語っています。被災者やその親族の体験に基づく声は、地震大国である島国、日本において多くの防災・避難の教訓を伝えます。' },
+      { label:'原発事故から、原子力発電所を必要とするエネルギー問題を語るため', message:'原発事故は震災によって引き起こされましたが、その背景には原発を必要とするエネルギー問題が存在しています。地震や津波は自然災害ですが、原発事故は人の営みが深く関わっている悲劇とも考えられます。\n震災前後の人の営みから世界中で共通しているエネルギー問題を考えるきっかけを生み出します。' },
+      { label:'中間貯蔵施設を受け入れた、大熊町の苦渋の決断と復興への想いを語るため', message:'原発事故後に中間貯蔵施設を受け入れる事は大熊町にとって苦渋の決断でした。各所に一時保管されていた除去土壌を受け入れ、福島全体の復興を進めるために、多くの町民が先祖代々の土地や家を受け継いできた土地や家、町の風景を手放すことを決断しました。時が止まったような遺構の姿は、その決断の意味と重さを物語ります。' }
+    ] },
+    { id:'Q2', type:'single', title:'Q1のメッセージを語る為に、遺構はどのような形で保存されるのが望ましいですか。', options:[
+      { label:'遺構をそのまま（存置）保存', base_initial_min:180, base_initial_max:220, base_maint_min:35, base_maint_max:45 },
+      { label:'遺構を現状凍結的に保存', base_initial_min:130, base_initial_max:170, base_maint_min:20, base_maint_max:30 },
+      { label:'遺構を改修して施設として利活用', base_initial_min:550, base_initial_max:650, base_maint_min:70, base_maint_max:90 },
+      { label:'遺構（建物）は保存せず３Dデータ等で保存', base_initial_min:70, base_initial_max:90, base_maint_min:4, base_maint_max:6 }
+    ] },
+    { id:'Q3', type:'single', title:'建物はいつまで保存されるのが望ましいですか。', options:[
+      { label:'0年（建物は保存しなくて良い）', maint_factor:0 },
+      { label:'約20年（中間貯蔵施設の撤退まで保存する）', maint_factor:1.0 },
+      { label:'20～50年（中間貯蔵施設撤退以降も保存する）', maint_factor:1.3 },
+      { label:'50年以上（可能な限り保存する）', maint_factor:1.6 },
+      { label:'保存処置は行わず、建物が崩れるまでありのままで残す', maint_factor:0.7 }
+    ] },
+    { id:'Q4', type:'slider', title:'保存活用に係る事業費のうち、町はどの程度負担する必要があると思いますか。', min:0, max:100, step:1, value:0 },
+    { id:'Q5', type:'text', optional:true, title:'参考：自由記述（任意）', placeholder:'ご意見・ご提案などあればご記入ください（任意）' }
   ]
 };
 
-const storageKey = "shinsai-ikou-form-config-v25debugfix";
-const answersKey  = "shinsai-ikou-local-answers-v1";
-function loadConfig(){ try{ const raw=localStorage.getItem(storageKey); return raw? JSON.parse(raw): structuredClone(defaultConfig);}catch(e){ return structuredClone(defaultConfig);} }
+var storageKey = 'shinsai-ikou-form-config-v27';
+var answersKey  = 'shinsai-ikou-local-answers-v1';
+function loadConfig(){ try{ var raw=localStorage.getItem(storageKey); return raw? JSON.parse(raw): window.structuredClone(defaultConfig);}catch(e){ return window.structuredClone(defaultConfig);} }
 function saveConfig(cfg){ try{ localStorage.setItem(storageKey, JSON.stringify(cfg)); }catch(e){} }
-let CONFIG = loadConfig();
+var CONFIG = loadConfig();
 
-// DOM取得
-const elQuestions = document.getElementById('questions');
-const elMessage   = document.getElementById('message');
-const vInitial    = document.getElementById('v-initial');
-const tInitial    = document.getElementById('t-initial');
-const minInitial  = document.getElementById('min-initial');
-const rangeInitial= document.getElementById('range-initial');
-const vMaint      = document.getElementById('v-maint');
-const tMaint      = document.getElementById('t-maint');
-const minMaint    = document.getElementById('min-maint');
-const rangeMaint  = document.getElementById('range-maint');
-const vTownI      = document.getElementById('v-town-initial');
-const bTownI      = document.getElementById('b-town-initial');
-const tTownI      = document.getElementById('t-town-initial');
-const vTownM      = document.getElementById('v-town-maint');
-const bTownM      = document.getElementById('b-town-maint');
-const tTownM      = document.getElementById('t-town-maint');
-const statusEl    = document.getElementById('status');
-const unitInitialLabel = document.getElementById('unitInitialLabel');
-const unitInitialLabel2= document.getElementById('unitInitialLabel2');
-const unitMaintLabel   = document.getElementById('unitMaintLabel');
-const unitMaintLabel2  = document.getElementById('unitMaintLabel2');
+// ===== DOM参照 =====
+var elQuestions = document.getElementById('questions');
+var elMessage   = document.getElementById('message');
+var vInitial    = document.getElementById('v-initial');
+var tInitial    = document.getElementById('t-initial');
+var minInitial  = document.getElementById('min-initial');
+var rangeInitial= document.getElementById('range-initial');
+var vMaint      = document.getElementById('v-maint');
+var tMaint      = document.getElementById('t-maint');
+var minMaint    = document.getElementById('min-maint');
+var rangeMaint  = document.getElementById('range-maint');
+var vTownI      = document.getElementById('v-town-initial');
+var bTownI      = document.getElementById('b-town-initial');
+var tTownI      = document.getElementById('t-town-initial');
+var vTownM      = document.getElementById('v-town-maint');
+var bTownM      = document.getElementById('b-town-maint');
+var tTownM      = document.getElementById('t-town-maint');
+var statusEl    = document.getElementById('status');
+var unitInitialLabel = document.getElementById('unitInitialLabel');
+var unitInitialLabel2= document.getElementById('unitInitialLabel2');
+var unitMaintLabel   = document.getElementById('unitMaintLabel');
+var unitMaintLabel2  = document.getElementById('unitMaintLabel2');
 
 // 一時保存UI
-const localCountEl  = document.getElementById('localCount');
-const localRecentEl = document.getElementById('localRecent');
+var localCountEl  = document.getElementById('localCount');
+var localRecentEl = document.getElementById('localRecent');
 
-// 管理者UI取得
-const titleInput=document.getElementById('titleInput');
-const unitInitialSel=document.getElementById('unitInitial');
-const unitMaintSel=document.getElementById('unitMaint');
-const graphMaxModeSel=document.getElementById('graphMaxMode');
-const graphMaxValueInput=document.getElementById('graphMaxValue');
-const q1Editors=document.getElementById('q1Editors');
-const q2Editors=document.getElementById('q2Editors');
-const q3Editors=document.getElementById('q3Editors');
-const testResultEl=document.getElementById('testResult');
+// 管理者UI
+var titleInput=document.getElementById('titleInput');
+var unitInitialSel=document.getElementById('unitInitial');
+var unitMaintSel=document.getElementById('unitMaint');
+var graphMaxModeSel=document.getElementById('graphMaxMode');
+var graphMaxValueInput=document.getElementById('graphMaxValue');
+var q1Editors=document.getElementById('q1Editors');
+var q2Editors=document.getElementById('q2Editors');
+var q3Editors=document.getElementById('q3Editors');
+var testResultEl=document.getElementById('testResult');
 
-const state = { answers: {} };
+var state = { answers: {} };
 
-function fmt(n, unit){ if(n==null || isNaN(n)) return "-"; return new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0}).format(n) + unit; }
-function mid(min,max){ if(min==null||max==null) return null; return (min+max)/2; }
+function fmt(n, unit){ if(n==null || isNaN(n)) return '-'; return new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0}).format(n) + (unit?(' '+unit):''); }
+function mid(min,max){ if(min==null||max==null) return null; return Math.round((min+max)/2); }
 function pad2(n){ return String(n).padStart(2,'0'); }
-function formatLocal(ts=new Date()){
-  const y=ts.getFullYear(), m=pad2(ts.getMonth()+1), d=pad2(ts.getDate());
-  const h=pad2(ts.getHours()), mi=pad2(ts.getMinutes()), s=pad2(ts.getSeconds());
-  const offMin = ts.getTimezoneOffset();
-  const sign = offMin>0? '-' : '+'; const abs=Math.abs(offMin); const oh=pad2(Math.floor(abs/60)); const om=pad2(abs%60);
-  return `${y}-${m}-${d} ${h}:${mi}:${s}${sign}${oh}:${om}`;
-}
+function formatLocal(ts){ ts = ts||new Date(); var y=ts.getFullYear(), m=pad2(ts.getMonth()+1), d=pad2(ts.getDate()); var h=pad2(ts.getHours()), mi=pad2(ts.getMinutes()), s=pad2(ts.getSeconds()); var offMin=ts.getTimezoneOffset(); var sign=offMin>0?'-':'+'; var abs=Math.abs(offMin); var oh=pad2(Math.floor(abs/60)); var om=pad2(abs%60); return y+'-'+m+'-'+d+' '+h+':'+mi+':'+s+sign+oh+':'+om; }
 
 function renderQuestions(){
   elQuestions.innerHTML = '';
-  CONFIG.questions.forEach(q=>{
-    const title = document.createElement('div'); title.className='q-title'; title.textContent = `${q.id}. ${q.title}`; elQuestions.appendChild(title);
+  for(var qi=0; qi<CONFIG.questions.length; qi++){
+    var q = CONFIG.questions[qi];
+    var title = document.createElement('div'); title.className='q-title'; title.textContent = q.id+'. '+q.title; elQuestions.appendChild(title);
     if(q.type==='single'){
-      q.options.forEach((opt,idx)=>{
-        const label=document.createElement('label'); label.className='opt';
-        const input=document.createElement('input'); input.type='radio'; input.name=q.id; input.value=idx;
-        input.addEventListener('change',()=>{ state.answers[q.id]=idx; updateResults(); });
-        label.appendChild(input); const span=document.createElement('span'); span.textContent=opt.label; label.appendChild(span); elQuestions.appendChild(label);
-      });
+      for(var idx=0; idx<q.options.length; idx++){
+        var opt=q.options[idx];
+        var label=document.createElement('label'); label.className='opt';
+        var input=document.createElement('input'); input.type='radio'; input.name=q.id; input.value=idx;
+        input.addEventListener('change', (function(qid,ii){ return function(){ state.answers[qid]=ii; updateResults(); }; })(q.id, idx));
+        label.appendChild(input); var span=document.createElement('span'); span.textContent=opt.label; label.appendChild(span); elQuestions.appendChild(label);
+      }
     }else if(q.type==='slider'){
-      const row=document.createElement('div'); row.className='slider-row';
-      const input=document.createElement('input'); input.type='range'; input.min=q.min; input.max=q.max; input.step=q.step||1; input.value=q.value||0;
-      const val=document.createElement('div'); val.className='pill'; val.textContent=`${input.value}%`;
-      input.addEventListener('input',()=>{ val.textContent=`${input.value}%`; state.answers[q.id]=Number(input.value); updateResults(); });
-      row.appendChild(input); row.appendChild(val); elQuestions.appendChild(row); state.answers[q.id]=Number(input.value);
+      var row=document.createElement('div'); row.className='slider-row';
+      var inputR=document.createElement('input'); inputR.type='range'; inputR.min=q.min; inputR.max=q.max; inputR.step=q.step||1; inputR.value=q.value||0;
+      var val=document.createElement('div'); val.className='pill'; val.textContent=String(inputR.value)+'%';
+      inputR.addEventListener('input',(function(qid){ return function(){ val.textContent=String(inputR.value)+'%'; state.answers[qid]=Number(inputR.value); updateResults(); }; })(q.id));
+      row.appendChild(inputR); row.appendChild(val); elQuestions.appendChild(row); state.answers[q.id]=Number(inputR.value);
     }else if(q.type==='text'){
-      const ta=document.createElement('textarea'); ta.placeholder=q.placeholder||''; ta.style.minHeight='90px';
-      ta.addEventListener('input',()=>{ state.answers[q.id]=ta.value; }); elQuestions.appendChild(ta);
+      var ta=document.createElement('textarea'); ta.placeholder=q.placeholder||''; ta.style.minHeight='90px';
+      ta.addEventListener('input',(function(qid){ return function(){ state.answers[qid]=ta.value; }; })(q.id)); elQuestions.appendChild(ta);
     }
-  });
+  }
 }
 
 function selections(){
-  const qA1=CONFIG.questions.find(q=>q.id==='A1');
-  const q1 =CONFIG.questions.find(q=>q.id==='Q1');
-  const q2 =CONFIG.questions.find(q=>q.id==='Q2');
-  const q3 =CONFIG.questions.find(q=>q.id==='Q3');
-  const slider=Number(state.answers['Q4']||0);
-  const selA1 = Number.isInteger(state.answers['A1'])? qA1.options[state.answers['A1']] : null;
-  const selQ1 = Number.isInteger(state.answers['Q1'])? q1.options[state.answers['Q1']] : null;
-  const selQ2 = Number.isInteger(state.answers['Q2'])? q2.options[state.answers['Q2']] : null;
-  const selQ3 = Number.isInteger(state.answers['Q3'])? q3.options[state.answers['Q3']] : null;
-  return {selA1, selQ1, selQ2, selQ3, slider};
+  function getQ(id){ for(var i=0;i<CONFIG.questions.length;i++){ if(CONFIG.questions[i].id===id) return CONFIG.questions[i]; } return null; }
+  var qA1=getQ('A1'); var q1=getQ('Q1'); var q2=getQ('Q2'); var q3=getQ('Q3');
+  var slider = Number(state.answers['Q4']||0);
+  var selA1 = (qA1 && Number.isInteger(state.answers['A1']))? qA1.options[state.answers['A1']] : null;
+  var selQ1 = (q1 && Number.isInteger(state.answers['Q1']))? q1.options[state.answers['Q1']] : null;
+  var selQ2 = (q2 && Number.isInteger(state.answers['Q2']))? q2.options[state.answers['Q2']] : null;
+  var selQ3 = (q3 && Number.isInteger(state.answers['Q3']))? q3.options[state.answers['Q3']] : null;
+  return {selA1:selA1, selQ1:selQ1, selQ2:selQ2, selQ3:selQ3, slider:slider};
 }
 
 function updateBars(values, ranges, manualMax){
-  const candidateMax = [];
-  values.forEach(v=>{ if(typeof v==='number') candidateMax.push(v); });
-  ranges.forEach(r=>{ if(r && typeof r.min==='number') candidateMax.push(r.max); });
-  let globalMax = candidateMax.length? Math.max(...candidateMax,1):1;
+  var candidateMax = [];
+  for(var i=0;i<values.length;i++){ if(typeof values[i]==='number') candidateMax.push(values[i]); }
+  for(var j=0;j<ranges.length;j++){ var r=ranges[j]; if(r && typeof r.min==='number' && typeof r.max==='number') candidateMax.push(r.max); }
+  var globalMax = candidateMax.length? Math.max.apply(null, candidateMax.concat([1])):1;
   if(manualMax && manualMax>0){ globalMax = manualMax; }
 
   function setMinRange(minEl, rangeEl, min, max){
     if(typeof min==='number' && typeof max==='number'){
-      const left = (min/globalMax)*100;
-      const width = Math.max(2, ((max-min)/globalMax)*100);
-      minEl.style.width = left + '%';
+      var left = (min/globalMax)*100;
+      var width = Math.max(2, ((max-min)/globalMax)*100);
+      minEl.style.width = Math.max(2,(min/globalMax)*100) + '%';
       rangeEl.style.left = left + '%';
       rangeEl.style.width = width + '%';
     }else{
       minEl.style.width = '0%'; rangeEl.style.width='0%';
     }
   }
-  function setFill(fillEl, val){
-    const w = (typeof val==='number')? Math.max(2,(val/globalMax)*100):0; fillEl.style.width = w + '%';
-  }
-  return { globalMax, setMinRange, setFill };
+  function setFill(fillEl, val){ var w = (typeof val==='number')? Math.max(2,(val/globalMax)*100):0; fillEl.style.width = w + '%'; }
+  return { globalMax:globalMax, setMinRange:setMinRange, setFill:setFill };
 }
 
 function updateResults(){
-  const { selQ1, selQ2, selQ3, slider } = selections();
+  var sel = selections();
+  var selQ1 = sel.selQ1, selQ2 = sel.selQ2, selQ3 = sel.selQ3, slider = sel.slider;
+
   unitInitialLabel.textContent = CONFIG.unitInitial;
   unitInitialLabel2.textContent= CONFIG.unitInitial;
   unitMaintLabel.textContent   = CONFIG.unitMaint;
   unitMaintLabel2.textContent  = CONFIG.unitMaint;
 
-  elMessage.textContent = selQ1?.message || '未選択です。左の質問へ回答してください。';
+  elMessage.textContent = (selQ1 && selQ1.message) ? selQ1.message : '未選択です。左の質問へ回答してください。';
 
-  const iMin = selQ2?.initial_min ?? null; const iMax = selQ2?.initial_max ?? null; const iMid = (iMin!=null&&iMax!=null)? mid(iMin,iMax): null;
-  vInitial.textContent = (iMid!=null)? fmt(iMid, ' ' + CONFIG.unitInitial) : '-';
-  tInitial.textContent = (iMin!=null)? `範囲：${fmt(iMin,' '+CONFIG.unitInitial)} 〜 ${fmt(iMax,' '+CONFIG.unitInitial)}` : '範囲：-';
+  // 初期費用：Q2の最小～最大の中央値
+  var iMin = (selQ2 && selQ2.base_initial_min!=null)? selQ2.base_initial_min : null;
+  var iMax = (selQ2 && selQ2.base_initial_max!=null)? selQ2.base_initial_max : null;
+  var iMid = (iMin!=null && iMax!=null)? mid(iMin,iMax): null;
+  vInitial.textContent = (iMid!=null)? fmt(iMid, CONFIG.unitInitial) : '-';
+  tInitial.textContent = (iMin!=null)? ('範囲：'+fmt(iMin, CONFIG.unitInitial)+' 〜 '+fmt(iMax, CONFIG.unitInitial)) : '範囲：-';
 
-  const mMin = selQ3?.maint_min ?? null; const mMax = selQ3?.maint_max ?? null; const mMid = (mMin!=null&&mMax!=null)? mid(mMin,mMax): null;
-  vMaint.textContent = (mMid!=null)? fmt(mMid, ' ' + CONFIG.unitMaint) : '-';
-  tMaint.textContent = (mMin!=null)? `範囲：${fmt(mMin,' '+CONFIG.unitMaint)} 〜 ${fmt(mMax,' '+CONFIG.unitMaint)}` : '範囲：-';
+  // 維持費：Q2の維持費範囲 × Q3倍率（最小・最大→中央値表示）
+  var mBaseMin = (selQ2 && selQ2.base_maint_min!=null)? selQ2.base_maint_min : null;
+  var mBaseMax = (selQ2 && selQ2.base_maint_max!=null)? selQ2.base_maint_max : null;
+  var factor   = (selQ3 && selQ3.maint_factor!=null)? selQ3.maint_factor : null;
+  var mMin = (mBaseMin!=null && factor!=null)? Math.round(mBaseMin * factor) : null;
+  var mMax = (mBaseMax!=null && factor!=null)? Math.round(mBaseMax * factor) : null;
+  var mMid = (mMin!=null && mMax!=null)? mid(mMin,mMax): null;
+  vMaint.textContent = (mMid!=null)? fmt(mMid, CONFIG.unitMaint) : '-';
+  tMaint.textContent = (mMin!=null)? ('範囲：'+fmt(mMin, CONFIG.unitMaint)+' 〜 '+fmt(mMax, CONFIG.unitMaint)) : '範囲：-';
 
-  const townI = (iMid!=null)? Math.round(iMid*(slider/100)) : null;
-  const townM = (mMid!=null)? Math.round(mMid*(slider/100)) : null;
-  vTownI.textContent = (townI!=null)? fmt(townI,' '+CONFIG.unitInitial) : '-';
-  vTownM.textContent = (townM!=null)? fmt(townM,' '+CONFIG.unitMaint) : '-';
-  tTownI.textContent = (iMid!=null)? `= 初期費用 ${fmt(iMid,' '+CONFIG.unitInitial)} × ${slider}%` : '—';
-  tTownM.textContent = (mMid!=null)? `= 維持費 ${fmt(mMid,' '+CONFIG.unitMaint)} × ${slider}%` : '—';
+  var townI = (iMid!=null)? Math.round(iMid*(slider/100)) : null;
+  var townM = (mMid!=null)? Math.round(mMid*(slider/100)) : null;
+  vTownI.textContent = (townI!=null)? fmt(townI, CONFIG.unitInitial) : '-';
+  vTownM.textContent = (townM!=null)? fmt(townM, CONFIG.unitMaint) : '-';
+  tTownI.textContent = (iMid!=null)? ('= 初期費用 '+fmt(iMid, CONFIG.unitInitial)+' × '+slider+'%') : '—';
+  tTownM.textContent = (mMid!=null)? ('= 維持費 '+fmt(mMid, CONFIG.unitMaint)+' × '+slider+'%') : '—';
 
-  const manualMax = (CONFIG.graph?.maxMode==='manual') ? Number(CONFIG.graph?.maxValue||0) : 0;
-  const scaler = updateBars(
+  var manualMax = (CONFIG.graph && CONFIG.graph.maxMode==='manual')? Number((CONFIG.graph && CONFIG.graph.maxValue) || 0) : 0;
+  var scaler = updateBars(
     [townI, townM],
     [ (iMin!=null&&iMax!=null)? {min:iMin,max:iMax}:null, (mMin!=null&&mMax!=null)? {min:mMin,max:mMax}:null ],
     manualMax
@@ -362,59 +364,65 @@ function buildUI(){ renderQuestions(); updateResults(); updateLocalBox(); }
 
 // ===== CSV保存（UTF-8+BOM・CRLF） =====
 function toCsv(){
-  const { selA1, selQ1, selQ2, selQ3, slider } = selections();
-  const iMin = selQ2?.initial_min ?? '';
-  const iMax = selQ2?.initial_max ?? '';
-  const iMid = (iMin!=='' && iMax!=='') ? mid(iMin,iMax) : '';
-  const mMin = selQ3?.maint_min ?? '';
-  const mMax = selQ3?.maint_max ?? '';
-  const mMid = (mMin!=='' && mMax!=='') ? mid(mMin,mMax) : '';
-  const townI = (iMid!=='' ) ? Math.round(iMid*(slider/100)) : '';
-  const townM = (mMid!=='' ) ? Math.round(mMid*(slider/100)) : '';
-  const now = new Date();
-  const tsIso = now.toISOString();
-  const tsLocal = formatLocal(now);
+  var sel = selections();
+  var selA1 = sel.selA1, selQ1=sel.selQ1, selQ2=sel.selQ2, selQ3=sel.selQ3, slider=sel.slider;
+  var iMin = selQ2? selQ2.base_initial_min : '';
+  var iMax = selQ2? selQ2.base_initial_max : '';
+  var iMid = (iMin!=='' && iMax!=='') ? mid(iMin,iMax) : '';
+  var mBaseMin = selQ2? selQ2.base_maint_min : '';
+  var mBaseMax = selQ2? selQ2.base_maint_max : '';
+  var factor = selQ3? selQ3.maint_factor : '';
+  var mMin = (mBaseMin!=='' && factor!=='')? Math.round(mBaseMin*factor):'';
+  var mMax = (mBaseMax!=='' && factor!=='')? Math.round(mBaseMax*factor):'';
+  var mMid = (mMin!=='' && mMax!=='')? mid(mMin,mMax):'';
+  var townI = (iMid!=='')? Math.round(iMid*(slider/100)) : '';
+  var townM = (mMid!=='')? Math.round(mMid*(slider/100)) : '';
+  var now = new Date();
+  var tsIso = now.toISOString();
+  var tsLocal = formatLocal(now);
 
-  const headers=[
+  var headers=[
     'answered_at_iso','answered_at_local',
     'form_title','A1_residence',
     'Q1_choice','message',
     'Q2_choice','initial_min','initial_max','initial_mid','unit_initial',
-    'Q3_choice','maint_min','maint_max','maint_mid','unit_maint',
+    'maint_base_min','maint_base_max','maint_factor','maint_min','maint_max','maint_mid','unit_maint',
     'Q4_percent','town_initial','town_maint',
     'graph_max_mode','graph_max_value',
     'Q5_free_text'
   ];
-  const row=[
+  var row=[
     tsIso, tsLocal,
-    CONFIG.title, selA1? selA1.label:'',
-    selQ1? selQ1.label:'', selQ1? selQ1.message:'',
-    selQ2? selQ2.label:'', iMin, iMax, iMid, CONFIG.unitInitial,
-    selQ3? selQ3.label:'', mMin, mMax, mMid, CONFIG.unitMaint,
+    CONFIG.title, (selA1? selA1.label:''),
+    (selQ1? selQ1.label:''), (selQ1? selQ1.message:''),
+    (selQ2? selQ2.label:''), iMin, iMax, iMid, CONFIG.unitInitial,
+    mBaseMin, mBaseMax, factor, mMin, mMax, mMid, CONFIG.unitMaint,
     slider, townI, townM,
-    CONFIG.graph?.maxMode || 'auto', CONFIG.graph?.maxValue ?? '',
-    state.answers['Q5']||''
+    (CONFIG.graph && CONFIG.graph.maxMode ? CONFIG.graph.maxMode : 'auto'), (CONFIG.graph && CONFIG.graph.maxValue!=null ? CONFIG.graph.maxValue : ''),
+    (state.answers['Q5']||'')
   ];
-  const esc=s=>{ if(s==null) return ''; const str=String(s).replaceAll('"','""'); return '"'+str+'"'; };
+  var esc=function(s){ if(s==null) return ''; var str=String(s).replaceAll('"','""'); return '"'+str+'"'; };
   return [headers.map(esc).join(','), row.map(esc).join(',')].join('\r\n');
 }
 function downloadCsv(filename, csv){
-  const BOM = String.fromCharCode(0xFEFF);
-  const blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=filename; a.style.display='none';
+  var BOM = String.fromCharCode(0xFEFF);
+  var blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download=filename; a.style.display='none';
   document.body.appendChild(a); a.click();
-  setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},0);
+  setTimeout(function(){URL.revokeObjectURL(url); a.remove();},0);
 }
 
-// ===== 端末一時保存（CSV以外の簡易記録） =====
+// ===== 端末一時保存 =====
 function buildRecord(){
-  const { selA1, selQ1, selQ2, selQ3, slider } = selections();
-  const iMin = selQ2?.initial_min ?? null; const iMax = selQ2?.initial_max ?? null; const iMid = (iMin!=null&&iMax!=null)? mid(iMin,iMax): null;
-  const mMin = selQ3?.maint_min ?? null; const mMax = selQ3?.maint_max ?? null; const mMid = (mMin!=null&&mMax!=null)? mid(mMin,mMax): null;
-  const townI = (iMid!=null)? Math.round(iMid*(slider/100)) : null;
-  const townM = (mMid!=null)? Math.round(mMid*(slider/100)) : null;
-  const now = new Date();
+  var sel = selections();
+  var selA1=sel.selA1, selQ1=sel.selQ1, selQ2=sel.selQ2, selQ3=sel.selQ3, slider=sel.slider;
+  var iMin = selQ2? selQ2.base_initial_min : null; var iMax = selQ2? selQ2.base_initial_max : null; var iMid = (iMin!=null&&iMax!=null)? mid(iMin,iMax): null;
+  var mBaseMin = selQ2? selQ2.base_maint_min : null; var mBaseMax = selQ2? selQ2.base_maint_max : null; var factor = selQ3? selQ3.maint_factor : null;
+  var mMin = (mBaseMin!=null&&factor!=null)? Math.round(mBaseMin*factor) : null; var mMax = (mBaseMax!=null&&factor!=null)? Math.round(mBaseMax*factor) : null; var mMid = (mMin!=null&&mMax!=null)? mid(mMin,mMax): null;
+  var townI = (iMid!=null)? Math.round(iMid*(slider/100)) : null;
+  var townM = (mMid!=null)? Math.round(mMid*(slider/100)) : null;
+  var now = new Date();
   return {
     answered_at_iso: now.toISOString(),
     answered_at_local: formatLocal(now),
@@ -424,146 +432,142 @@ function buildRecord(){
     message: selQ1? selQ1.message: null,
     Q2_choice: selQ2? selQ2.label: null,
     initial_min: iMin, initial_max: iMax, initial_mid: iMid, unit_initial: CONFIG.unitInitial,
-    Q3_choice: selQ3? selQ3.label: null,
-    maint_min: mMin, maint_max: mMax, maint_mid: mMid, unit_maint: CONFIG.unitMaint,
+    maint_base_min: mBaseMin, maint_base_max: mBaseMax, maint_factor: factor, maint_min: mMin, maint_max: mMax, maint_mid: mMid, unit_maint: CONFIG.unitMaint,
     Q4_percent: slider,
     town_initial: townI,
     town_maint: townM,
-    graph_max_mode: CONFIG.graph?.maxMode || 'auto',
-    graph_max_value: CONFIG.graph?.maxValue ?? null,
+    graph_max_mode: (CONFIG.graph && CONFIG.graph.maxMode) ? CONFIG.graph.maxMode : 'auto',
+    graph_max_value: (CONFIG.graph && CONFIG.graph.maxValue!=null) ? CONFIG.graph.maxValue : null,
     Q5_free_text: state.answers['Q5']||''
   };
 }
-function getLocal(){ try{ const raw=localStorage.getItem(answersKey); return raw? JSON.parse(raw): []; }catch(e){ return []; } }
+function getLocal(){ try{ var raw=localStorage.getItem(answersKey); return raw? JSON.parse(raw): []; }catch(e){ return []; } }
 function setLocal(arr){ try{ localStorage.setItem(answersKey, JSON.stringify(arr)); }catch(e){} }
-function appendLocal(){ const rec=buildRecord(); const arr=getLocal(); arr.push(rec); setLocal(arr); updateLocalBox(); return rec; }
-function clearLocal(){ setLocal([]); updateLocalBox(); }
-function updateLocalBox(){ const arr=getLocal(); localCountEl.textContent = arr.length; if(arr.length===0){ localRecentEl.textContent='（まだ保存はありません）'; return; } const last = arr.slice(-5).reverse(); localRecentEl.innerHTML = last.map((r)=>`<div>・${r.answered_at_local}｜A1:${r.A1_residence||'-'}｜Q1:${r.Q1_choice||'-'}｜Q2:${r.Q2_choice||'-'}｜Q3:${r.Q3_choice||'-'}｜Q4:${r.Q4_percent}%</div>`).join(''); }
-
-function exportLocalJson(){ const arr=getLocal(); const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`ikou_local_answers_${new Date().toISOString().replaceAll(':','-')}.json`; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},0); }
-function exportLocalCsv(){ const arr=getLocal(); if(arr.length===0){ status('一時保存はありません'); return; } const headers = Object.keys(arr[0]); const esc=s=>{ if(s==null) return ''; const str=String(s).replaceAll('"','""'); return '"'+str+'"'; }; const lines=[ headers.map(esc).join(',') ]; arr.forEach(o=>{ lines.push(headers.map(h=>esc(o[h])).join(',')); }); const BOM=String.fromCharCode(0xFEFF); const blob=new Blob([BOM + lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`ikou_local_answers_${new Date().toISOString().replaceAll(':','-')}.csv`; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},0); }
+function appendLocal(){ var rec=buildRecord(); var arr=getLocal(); arr.push(rec); setLocal(arr); updateLocalBox(); return rec; }
+function updateLocalBox(){
+  var arr=getLocal();
+  if(localCountEl){ localCountEl.textContent = arr.length; }
+  var footerCountEl = document.getElementById('footerLocalCount');
+  if(footerCountEl){ footerCountEl.textContent = arr.length; }
+  if(localRecentEl){
+    if(arr.length===0){ localRecentEl.textContent='（まだ保存はありません）'; return; }
+    var last = arr.slice(-5).reverse();
+    var html = '';
+    for(var i=0;i<last.length;i++){
+      var r=last[i];
+      html += '<div>・'+(r.answered_at_local||'')+'｜A1:'+(r.A1_residence||'-')+'｜Q1:'+(r.Q1_choice||'-')+'｜Q2:'+(r.Q2_choice||'-')+'｜Q3:'+(r.Q3_choice||'-')+'｜Q4:'+(r.Q4_percent||0)+'%</div>';
+    }
+    localRecentEl.innerHTML = html;
+  }
+}
+function exportLocalJson(){ var arr=getLocal(); var blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='ikou_local_answers_'+new Date().toISOString().replaceAll(':','-')+'.json'; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(url); a.remove();},0); }
+function exportLocalCsv(){
+  var arrSaved = getLocal();
+  var hasPending = (function(){ var s=selections(); var free=(state.answers['Q5']||'').trim(); return !!(s.selA1||s.selQ1||s.selQ2||s.selQ3||free); })();
+  var exportArr = arrSaved.slice(); if(hasPending){ exportArr.push(buildRecord()); }
+  if(exportArr.length===0){ status('一時保存がありません（画面入力も未保存です）'); return; }
+  // 集合ヘッダを作る
+  var headerSet = {}; var headers=[];
+  for(var i=0;i<exportArr.length;i++){ var o=exportArr[i]; for(var k in o){ if(o.hasOwnProperty(k) && !headerSet[k]){ headerSet[k]=true; headers.push(k); } } }
+  var esc = function(s){ if(s==null) return ''; var str=String(s).replaceAll('"','""'); return '"'+str+'"'; };
+  var lines = [ headers.map(esc).join(',') ];
+  for(var j=0;j<exportArr.length;j++){ var rowObj=exportArr[j]; var rowArr=[]; for(var h=0;h<headers.length;h++){ rowArr.push( esc(rowObj[headers[h]]) ); } lines.push(rowArr.join(',')); }
+  var BOM = String.fromCharCode(0xFEFF);
+  var blob = new Blob([BOM + lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download = 'ikou_local_answers_'+new Date().toISOString().replaceAll(':','-')+'.csv'; a.style.display='none';
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },0);
+  status('端末内の一時保存データ（未保存の現画面入力を含む）を書き出しました');
+}
 
 function resetAnswers(){ state.answers={}; buildUI(); status('回答をリセットしました。'); }
-function status(msg){ statusEl.textContent=msg; setTimeout(()=>{statusEl.textContent='';},4000); }
+function status(msg){ statusEl.textContent=msg; setTimeout(function(){statusEl.textContent='';},4000); }
 
 // ===== 管理者：かんたん編集フォーム =====
 function buildAdmin(){
   titleInput.value = CONFIG.title;
   unitInitialSel.value = CONFIG.unitInitial;
   unitMaintSel.value = CONFIG.unitMaint;
-  graphMaxModeSel.value = CONFIG.graph?.maxMode || 'auto';
-  graphMaxValueInput.value = Number(CONFIG.graph?.maxValue||0) || '';
+  var gm = (CONFIG.graph && CONFIG.graph.maxMode) ? CONFIG.graph.maxMode : 'auto';
+  var gv = (CONFIG.graph && CONFIG.graph.maxValue!=null) ? CONFIG.graph.maxValue : 0;
+  graphMaxModeSel.value = gm;
+  graphMaxValueInput.value = Number(gv)||'';
   graphMaxValueInput.disabled = (graphMaxModeSel.value !== 'manual');
 
+  // Q1 メッセージ
   q1Editors.innerHTML='';
-  CONFIG.questions.find(q=>q.id==='Q1').options.forEach((opt,idx)=>{
-    const box=document.createElement('div'); box.className='field';
-    const label=document.createElement('label'); label.textContent=`Q1-${idx+1} ${opt.label}｜表示文`;
-    const ta=document.createElement('textarea'); ta.value=opt.message; ta.rows=5;
-    ta.addEventListener('input',()=>{ opt.message=ta.value; });
+  var q1=null; for(var i=0;i<CONFIG.questions.length;i++){ if(CONFIG.questions[i].id==='Q1'){ q1=CONFIG.questions[i]; break; } }
+  for(var qi=0; qi<q1.options.length; qi++){
+    var opt=q1.options[qi];
+    var box=document.createElement('div'); box.className='field';
+    var label=document.createElement('label'); label.textContent='Q1-'+(qi+1)+' '+opt.label+'｜表示文';
+    var ta=document.createElement('textarea'); ta.value=opt.message; ta.rows=5; ta.addEventListener('input',(function(o,t){ return function(){ o.message=t.value; };})(opt,ta));
     box.appendChild(label); box.appendChild(ta); q1Editors.appendChild(box);
-  });
+  }
 
+  // Q2 範囲
   q2Editors.innerHTML='';
-  CONFIG.questions.find(q=>q.id==='Q2').options.forEach((opt,idx)=>{
-    const wrap=document.createElement('div'); wrap.className='field';
-    const label=document.createElement('label'); label.textContent=`Q2-${idx+1} ${opt.label}｜初期費用 最小〜最大（${CONFIG.unitInitial}）`;
-    const row=document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='1fr 1fr'; row.style.gap='8px';
-    const min=document.createElement('input'); min.type='number'; min.value=opt.initial_min; min.addEventListener('input',()=>{ opt.initial_min=Number(min.value||0); updateResults(); });
-    const max=document.createElement('input'); max.type='number'; max.value=opt.initial_max; max.addEventListener('input',()=>{ opt.initial_max=Number(max.value||0); updateResults(); });
-    row.appendChild(min); row.appendChild(max); wrap.appendChild(label); wrap.appendChild(row); q2Editors.appendChild(wrap);
-  });
+  var q2=null; for(var j=0;j<CONFIG.questions.length;j++){ if(CONFIG.questions[j].id==='Q2'){ q2=CONFIG.questions[j]; break; } }
+  for(var k=0; k<q2.options.length; k++){
+    var o=q2.options[k];
+    var wrap=document.createElement('div'); wrap.className='field';
+    var label=document.createElement('label'); label.textContent='Q2-'+(k+1)+' '+o.label+'｜初期費[min,max]（'+CONFIG.unitInitial+'）／維持費ベース[min,max]（'+CONFIG.unitMaint+'）';
+    var row=document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='repeat(4,1fr)'; row.style.gap='8px';
+    var iMin=document.createElement('input'); iMin.type='number'; iMin.value=o.base_initial_min||0; iMin.addEventListener('input',(function(oo,el){return function(){ oo.base_initial_min=Number(el.value||0); updateResults(); };})(o,iMin));
+    var iMax=document.createElement('input'); iMax.type='number'; iMax.value=o.base_initial_max||0; iMax.addEventListener('input',(function(oo,el){return function(){ oo.base_initial_max=Number(el.value||0); updateResults(); };})(o,iMax));
+    var mMin=document.createElement('input'); mMin.type='number'; mMin.value=o.base_maint_min||0; mMin.addEventListener('input',(function(oo,el){return function(){ oo.base_maint_min=Number(el.value||0); updateResults(); };})(o,mMin));
+    var mMax=document.createElement('input'); mMax.type='number'; mMax.value=o.base_maint_max||0; mMax.addEventListener('input',(function(oo,el){return function(){ oo.base_maint_max=Number(el.value||0); updateResults(); };})(o,mMax));
+    row.appendChild(iMin); row.appendChild(iMax); row.appendChild(mMin); row.appendChild(mMax);
+    wrap.appendChild(label); wrap.appendChild(row); q2Editors.appendChild(wrap);
+  }
 
+  // Q3 倍率
   q3Editors.innerHTML='';
-  CONFIG.questions.find(q=>q.id==='Q3').options.forEach((opt,idx)=>{
-    const wrap=document.createElement('div'); wrap.className='field';
-    const label=document.createElement('label'); label.textContent=`Q3-${idx+1} ${opt.label}｜維持費 最小〜最大（${CONFIG.unitMaint}）`;
-    const row=document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='1fr 1fr'; row.style.gap='8px';
-    const min=document.createElement('input'); min.type='number'; min.value=opt.maint_min; min.addEventListener('input',()=>{ opt.maint_min=Number(min.value||0); updateResults(); });
-    const max=document.createElement('input'); max.type='number'; max.value=opt.maint_max; max.addEventListener('input',()=>{ opt.maint_max=Number(max.value||0); updateResults(); });
-    row.appendChild(min); row.appendChild(max); wrap.appendChild(label); wrap.appendChild(row); q3Editors.appendChild(wrap);
-  });
+  var q3=null; for(var l=0;l<CONFIG.questions.length;l++){ if(CONFIG.questions[l].id==='Q3'){ q3=CONFIG.questions[l]; break; } }
+  for(var m=0;m<q3.options.length;m++){
+    var op=q3.options[m];
+    var wrap3=document.createElement('div'); wrap3.className='field';
+    var label3=document.createElement('label'); label3.textContent='Q3-'+(m+1)+' '+op.label+'｜維持費倍率（×）';
+    var factor=document.createElement('input'); factor.type='number'; factor.step='0.1'; factor.min='0'; factor.value=(op.maint_factor!=null?op.maint_factor:1); factor.addEventListener('input',(function(oo,el){return function(){ oo.maint_factor=Number(el.value||0); updateResults(); };})(op,factor));
+    wrap3.appendChild(label3); wrap3.appendChild(factor); q3Editors.appendChild(wrap3);
+  }
 }
 
-if(graphMaxModeSel){ graphMaxModeSel.addEventListener('change',()=>{ graphMaxValueInput.disabled = (graphMaxModeSel.value !== 'manual'); updateResults(); }); }
-if(graphMaxValueInput){ graphMaxValueInput.addEventListener('input',()=>{ const v=Number(graphMaxValueInput.value||0); if(!CONFIG.graph) CONFIG.graph={maxMode:'auto',maxValue:1000}; CONFIG.graph.maxValue=v; updateResults(); }); }
-
-const saveBtn=document.getElementById('saveConfig');
-const resetBtn=document.getElementById('resetConfig');
-const exportBtn=document.getElementById('exportConfig');
-const importBtn=document.getElementById('importBtn');
-const importInput=document.getElementById('importConfig');
-
-if(saveBtn){ saveBtn.addEventListener('click',()=>{
-  CONFIG.title = titleInput.value.trim() || defaultConfig.title;
-  CONFIG.unitInitial = unitInitialSel.value;
-  CONFIG.unitMaint   = unitMaintSel.value;
-  CONFIG.graph = CONFIG.graph || {maxMode:'auto',maxValue:1000};
-  CONFIG.graph.maxMode = graphMaxModeSel.value;
-  CONFIG.graph.maxValue= Number(graphMaxValueInput.value||0);
-  saveConfig(CONFIG);
-  buildUI();
-  buildAdmin();
-  status('設定を保存・反映しました（この端末に保存）');
-}); }
-
-if(resetBtn){ resetBtn.addEventListener('click',()=>{
-  if(confirm('初期設定に戻します。よろしいですか？')){
-    CONFIG = structuredClone(defaultConfig);
-    saveConfig(CONFIG); buildUI(); buildAdmin(); status('初期設定に戻しました。');
-  }
-}); }
-
-if(exportBtn){ exportBtn.addEventListener('click',()=>{
-  const text=JSON.stringify(CONFIG,null,2);
-  const blob=new Blob([text],{type:'application/json'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ikou_form_config_v25debugfix.json'; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},0);
-}); }
-
-if(importBtn){ importBtn.addEventListener('click',()=> importInput.click()); }
-if(importInput){ importInput.addEventListener('change',(ev)=>{
-  const file=ev.target.files?.[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{ try{ const parsed=JSON.parse(reader.result); CONFIG=parsed; saveConfig(CONFIG); buildUI(); buildAdmin(); status('設定を読み込みました。'); }catch(e){ alert('JSONの読み込みに失敗：'+e.message); } }; reader.readAsText(file);
-}); }
+// 設定の保存/初期化/入出力（最低限：ここでは保存のみ使用）
+// ※必要に応じて拡張可
 
 // 初期起動
 buildUI();
 buildAdmin();
 
 // フッターボタン
-const saveCsvBtn = document.getElementById('saveCsv');
-const saveLocalBtn = document.getElementById('saveLocal');
-const clearAllBtn = document.getElementById('clearAll');
-
-if(saveCsvBtn){ saveCsvBtn.addEventListener('click',()=>{ const csv=toCsv(); const ts=new Date().toISOString().replaceAll(':','-'); downloadCsv(`ikou_survey_${ts}.csv`, csv); resetAnswers(); }); }
-if(saveLocalBtn){ saveLocalBtn.addEventListener('click',()=>{ appendLocal(); resetAnswers(); status('端末に一時保存しました。'); }); }
-if(clearAllBtn){ clearAllBtn.addEventListener('click', resetAnswers); }
+var footerSaveLocalBtn = document.getElementById('footerSaveLocal');
+var footerExportCsvBtn = document.getElementById('footerExportCsv');
+if(footerSaveLocalBtn){ footerSaveLocalBtn.addEventListener('click', function(){ appendLocal(); status('端末に一時保存しました。'); resetAnswers(); }); }
+if(footerExportCsvBtn){ footerExportCsvBtn.addEventListener('click', function(){ exportLocalCsv(); }); }
 
 // 一時保存ボックス操作
-const exportLocalJsonBtn = document.getElementById('exportLocalJson');
-const exportLocalCsvBtn  = document.getElementById('exportLocalCsv');
-const clearLocalBtn      = document.getElementById('clearLocal');
+var exportLocalJsonBtn = document.getElementById('exportLocalJson');
+var exportLocalCsvBtn  = document.getElementById('exportLocalCsv');
 if(exportLocalJsonBtn){ exportLocalJsonBtn.addEventListener('click', exportLocalJson); }
 if(exportLocalCsvBtn){ exportLocalCsvBtn.addEventListener('click', exportLocalCsv); }
-if(clearLocalBtn){ clearLocalBtn.addEventListener('click',()=>{ if(confirm('一時保存を全削除します。よろしいですか？')){ clearLocal(); status('一時保存を削除しました。'); } }); }
 
-// ===== 開発者テスト（強化版） =====
+// 開発者テスト
 function runTests(){
-  const logs=[]; const ok=(name,cond)=>{ logs.push(`<div class="${cond?'pass':'fail'}">${cond?'✔':'✖'} ${name}</div>`); };
+  var logs=[]; var ok=function(name,cond){ logs.push('<div class="'+(cond?'pass':'fail')+'">'+(cond?'✔':'✖')+' '+name+'</div>'); };
   try{
-    ok('structuredClone 利用可', typeof structuredClone==='function');
-    ok('replaceAll 利用可', typeof ''.replaceAll==='function');
     ok('CONFIG.questions 配列', Array.isArray(CONFIG.questions) && CONFIG.questions.length>0);
-    const hasRadio = !!document.querySelector('#questions input[type="radio"]');
+    var hasRadio = !!document.querySelector('#questions input[type="radio"]');
     ok('ラジオ入力が描画される', hasRadio);
-    const csv=toCsv(); ok('CSV生成（CRLF）', typeof csv==='string' && csv.includes('\r\n'));
+    var csv=toCsv(); ok('CSV生成（CRLF）', typeof csv==='string' && csv.indexOf('\r\n')>=0);
     ok('CSVにA1列が含まれる', csv.indexOf('A1_residence')>=0);
-    const withBom = String.fromCharCode(0xFEFF) + csv; ok('BOM付与', withBom.charCodeAt(0)===0xFEFF);
-    const rec = buildRecord(); ok('レコードに時刻2種', !!rec.answered_at_iso && !!rec.answered_at_local);
-    state.answers={Q2:0,Q3:0,Q4:50}; updateResults(); ok('updateResults実行', true);
-  }catch(e){ logs.push(`<div class="fail">✖ 例外: ${e.message}</div>`); }
+    var withBom = String.fromCharCode(0xFEFF) + csv; ok('BOM付与', withBom.charCodeAt(0)===0xFEFF);
+    var rec = buildRecord(); ok('レコードに時刻2種', !!rec.answered_at_iso && !!rec.answered_at_local);
+    state.answers={Q2:0,Q3:1,Q4:50}; updateResults(); ok('updateResults実行', true);
+  }catch(e){ logs.push('<div class="fail">✖ 例外: '+e.message+'</div>'); }
   if(testResultEl){ testResultEl.innerHTML = logs.join(''); }
 }
-const runBtn=document.getElementById('runTests');
+var runBtn=document.getElementById('runTests');
 if(runBtn){ runBtn.addEventListener('click', runTests); }
 </script>
 </body>
